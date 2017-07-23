@@ -50,7 +50,7 @@ app.get('/speakers', function(req, res){
 
 });
 
-app.post('/speakers/:id/connect', function (req, res) {
+app.put('/speakers/:id/connect', function (req, res) {
   var script = "tell application \"Airfoil\"\n";
   script += "set myspeaker to first speaker whose id is \"" + req.params.id + "\"\n";
   script += "connect to myspeaker\n";
@@ -70,7 +70,7 @@ app.post('/speakers/:id/connect', function (req, res) {
   });
 });
 
-app.post('/speakers/:id/disconnect', function (req, res) {
+app.put('/speakers/:id/disconnect', function (req, res) {
   var script = "tell application \"Airfoil\"\n";
   script += "set myspeaker to first speaker whose id is \"" + req.params.id + "\"\n";
   script += "disconnect from myspeaker\n";
@@ -85,7 +85,7 @@ app.post('/speakers/:id/disconnect', function (req, res) {
   });
 });
 
-app.post('/speakers/:id/volume', bodyParser.text({type: '*/*'}), function (req, res) {
+app.put('/speakers/:id/volume', bodyParser.text({type: '*/*'}), function (req, res) {
   var script = "tell application \"Airfoil\"\n";
   script += "set myspeaker to first speaker whose id is \"" + req.params.id + "\"\n";
   script += "set (volume of myspeaker) to " + parseFloat(req.body) + "\n";
@@ -101,7 +101,7 @@ app.post('/speakers/:id/volume', bodyParser.text({type: '*/*'}), function (req, 
 });
 
 // uses a device source, like a hardware input
-app.post('/source/:id', function (req, res) {
+app.put('/source/:id', function (req, res) {
   var script = "tell application \"Airfoil\"\n";
   script += "set current audio source to first device source whose name is \"" + req.params.id + "\"\n";
   script += "end tell";
@@ -115,7 +115,7 @@ app.post('/source/:id', function (req, res) {
 });
 
 // sets the application source which should be streamed to the speakers
-app.post('/appsource/:id', function (req, res) {
+app.put('/appsource/:id', function (req, res) {
   var script = "set appName to \"" + req.params.id + "\"\n";
   script += "tell application \"System Events\"\n"
   script += "set appList to every process whose name is \"" + req.params.id + "\"\n";
@@ -143,7 +143,7 @@ app.post('/appsource/:id', function (req, res) {
 });
 
 // control the app that streams audio
-app.post('/appcontrol/:id', bodyParser.text({type: '*/*'}), function (req, res) {
+app.put('/appcontrol/:id', bodyParser.text({type: '*/*'}), function (req, res) {
   var script = "tell application \"" + req.params.id + "\" to " + req.body + "\n";
   applescript.execString(script, function(error, result) {
     if (error) {
@@ -155,7 +155,7 @@ app.post('/appcontrol/:id', bodyParser.text({type: '*/*'}), function (req, res) 
 });
 
 // sets a system source as source
-app.post('/syssource/:id', bodyParser.text({type: '*/*'}), function (req, res) {
+app.put('/syssource/:id', bodyParser.text({type: '*/*'}), function (req, res) {
   var script = "tell application \"Airfoil\"\n";
   script += "set aSource to first system source whose name is \"" + req.params.id + "\"\n";
   script += "set current audio source to aSource\n";
@@ -169,6 +169,96 @@ app.post('/syssource/:id', bodyParser.text({type: '*/*'}), function (req, res) {
     }
   });
 });
+
+// get current volume and mute status
+// applescript: output volume of (get volume settings) & output muted of (get volume settings)
+app.get('/volume/status', function(req, res){
+  // somehow this is a slow applescript command
+  var script = "output volume of (get volume settings) & output muted of (get volume settings)";
+
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      var volumeText = result.toString().replace("\[|\]", "").split(",");
+      res.json({ level: volumeText[0].trim(), muted: volumeText[1].trim() });
+    }
+  });
+});
+
+// mute the volume
+// applescript: set volume with output muted
+app.put('/volume/mute', function(req, res){
+  // somehow this is a slow applescript command
+  var script = "set volume with output muted";
+
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      res.json(result);
+    }
+  });
+});
+
+// unmute the volume
+// applescript: set volume without output muted
+app.put('/volume/unmute', function(req, res){
+  // somehow this is a slow applescript command
+  var script = "set volume without output muted";
+
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      res.json(result);
+    }
+  });
+});
+
+// set the volume louder/softer
+// applescript: set volume output volume (output volume of (get volume settings) + 5) --100%
+app.put('/volume/louder', function(req, res){
+  // somehow this is a slow applescript command
+  var script = "set volume output volume (output volume of (get volume settings) + 5) --100%";
+
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      res.json(result);
+    }
+  });
+});
+
+app.put('/volume/softer', function(req, res){
+  // somehow this is a slow applescript command
+  var script = "set volume output volume (output volume of (get volume settings) - 5) --100%";
+
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      res.json(result);
+    }
+  });
+});
+
+// set the volume
+// applescript: set volume output volume 51 --100%
+app.put('/volume/:level', function(req, res){
+  // somehow this is a slow applescript command
+  var script = "set volume output volume "+req.params.level+" --100%";
+
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      res.json(result);
+    }
+  });
+});
+
 
 
 app.listen(process.env.PORT || 10123);
