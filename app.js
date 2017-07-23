@@ -100,4 +100,45 @@ app.post('/speakers/:id/volume', bodyParser.text({type: '*/*'}), function (req, 
   });
 });
 
+app.post('/source/:id', function (req, res) {
+  var script = "tell application \"Airfoil\"\n";
+  script += "set current audio source to first device source whose name is \"" + req.params.id + "\"\n";
+  script += "end tell";
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      res.json({id: req.params.id})
+    }
+  });
+});
+
+app.post('/appsource/:id', function (req, res) {
+  var script = "set appName to \"" + req.params.id + "\"\n";
+  script += "tell application \"System Events\"\n"
+  script += "set appList to every process whose name is \"" + req.params.id + "\"\n";
+  script += "end tell\n"
+  script += "if length of appList is 0 then\n";
+  script += "tell application \"" + req.params.id + "\"\n";
+  script += "launch\n";
+  script += "delay 3\n";
+  script += "activate\n";
+  script += "end tell\n";
+  script += "end if\n";
+  script += "set pathToApp to (POSIX path of (path to application appName))\n"
+  script += "tell application \"Airfoil\"\n";
+  script += "set appsource to make new application source\n";
+  script += "set application file of appsource to pathToApp\n";
+  script += "set (current audio source) to appsource\n";
+  script += "end tell\n";
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      res.json({id: req.params.id})
+    }
+  });
+});
+
+
 app.listen(process.env.PORT || 10123);
