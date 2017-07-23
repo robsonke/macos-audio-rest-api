@@ -23,7 +23,7 @@ app.get('/speakers', function(req, res){
   "  copy nm to the end of thisSpeaker\n" +
   "  set spkId to id of currentSpeaker\n" +
   "  copy spkId to the end of thisSpeaker\n" +
-  "  set AppleScript's text item delimiters to \",\"\n" +
+  "  set AppleScript's text item delimiters to \";\"\n" +
   "  set speakerText to thisSpeaker as text\n" +
   "  set AppleScript's text item delimiters to \"\"\n" +
   "  copy speakerText to the end of allSpeakers\n" +
@@ -41,8 +41,8 @@ app.get('/speakers', function(req, res){
       var speakers = [];
       var speakerText = result.split("|");
       speakerText.map(function(s) {
-        var t = s.split(",");
-        speakers.push({ connected: t[0], volume: parseFloat(t[1]), name: t[2], id: t[3] });
+        var t = s.split(";");
+        speakers.push({ connected: t[0], volume: parseFloat(t[1].replace(",", ".")), name: t[2], id: t[3] });
       });
       res.json(speakers);
     }
@@ -100,6 +100,7 @@ app.post('/speakers/:id/volume', bodyParser.text({type: '*/*'}), function (req, 
   });
 });
 
+// uses a device source, like a hardware input
 app.post('/source/:id', function (req, res) {
   var script = "tell application \"Airfoil\"\n";
   script += "set current audio source to first device source whose name is \"" + req.params.id + "\"\n";
@@ -113,6 +114,7 @@ app.post('/source/:id', function (req, res) {
   });
 });
 
+// sets the application source which should be streamed to the speakers
 app.post('/appsource/:id', function (req, res) {
   var script = "set appName to \"" + req.params.id + "\"\n";
   script += "tell application \"System Events\"\n"
@@ -131,6 +133,34 @@ app.post('/appsource/:id', function (req, res) {
   script += "set application file of appsource to pathToApp\n";
   script += "set (current audio source) to appsource\n";
   script += "end tell\n";
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      res.json({id: req.params.id})
+    }
+  });
+});
+
+// control the app that streams audio
+app.post('/appcontrol/:id', bodyParser.text({type: '*/*'}), function (req, res) {
+  var script = "tell application \"" + req.params.id + "\" to " + req.body + "\n";
+  applescript.execString(script, function(error, result) {
+    if (error) {
+      res.json({error: error});
+    } else {
+      res.json({id: req.params.id})
+    }
+  });
+});
+
+// sets a system source as source
+app.post('/syssource/:id', bodyParser.text({type: '*/*'}), function (req, res) {
+  var script = "tell application \"Airfoil\"\n";
+  script += "set aSource to first system source whose name is \"" + req.params.id + "\"\n";
+  script += "set current audio source to aSource\n";
+  script += "end tell\n";
+
   applescript.execString(script, function(error, result) {
     if (error) {
       res.json({error: error});
